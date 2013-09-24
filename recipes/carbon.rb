@@ -21,9 +21,13 @@ package "python-twisted"
 package "python-simplejson"
 
 if node['graphite']['carbon']['enable_amqp']
-  include_recipe "python::pip"
-  python_pip "txamqp" do
-    action :install
+  if node['graphite']['txamqp_pkg'] then
+    package "#{node['graphite']['txamqp_pkg']}"
+  else
+    include_recipe "python::pip"
+    python_pip "txamqp" do
+      action :install
+    end
   end
 
   amqp_password = node['graphite']['carbon']['amqp_password']
@@ -39,21 +43,26 @@ end
 version = node['graphite']['version']
 pyver = node['languages']['python']['version'][0..-3]
 
-remote_file "#{Chef::Config[:file_cache_path]}/carbon-#{version}.tar.gz" do
-  source node['graphite']['carbon']['uri']
-  checksum node['graphite']['carbon']['checksum']
-end
+if node['graphite']['carbon_pkg'] then
+  package "#{node['graphite']['carbon_pkg']}"
 
-execute "untar carbon" do
-  command "tar xzof carbon-#{version}.tar.gz"
-  creates "#{Chef::Config[:file_cache_path]}/carbon-#{version}"
-  cwd Chef::Config[:file_cache_path]
-end
+else
+  remote_file "#{Chef::Config[:file_cache_path]}/carbon-#{version}.tar.gz" do
+    source node['graphite']['carbon']['uri']
+    checksum node['graphite']['carbon']['checksum']
+  end
 
-execute "install carbon" do
-  command "python setup.py install --prefix=#{node['graphite']['base_dir']} --install-lib=#{node['graphite']['base_dir']}/lib"
-  creates "#{node['graphite']['base_dir']}/lib/carbon-#{version}-py#{pyver}.egg-info"
-  cwd "#{Chef::Config[:file_cache_path]}/carbon-#{version}"
+  execute "untar carbon" do
+    command "tar xzof carbon-#{version}.tar.gz"
+    creates "#{Chef::Config[:file_cache_path]}/carbon-#{version}"
+    cwd Chef::Config[:file_cache_path]
+  end
+
+  execute "install carbon" do
+    command "python setup.py install --prefix=#{node['graphite']['base_dir']} --install-lib=#{node['graphite']['base_dir']}/lib"
+    creates "#{node['graphite']['base_dir']}/lib/carbon-#{version}-py#{pyver}.egg-info"
+    cwd "#{Chef::Config[:file_cache_path]}/carbon-#{version}"
+  end
 end
 
 template "#{node['graphite']['base_dir']}/conf/carbon.conf" do

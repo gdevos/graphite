@@ -70,21 +70,25 @@ dep_packages.each do |pkg|
   end
 end
 
-remote_file "#{Chef::Config[:file_cache_path]}/graphite-web-#{version}.tar.gz" do
-  source node['graphite']['web']['uri']
-  checksum node['graphite']['web']['checksum']
-end
+if node['graphite']['graphite-web_pkg'] then
+  package "#{node['graphite']['graphite-web_pkg']}"
+else
+  remote_file "#{Chef::Config[:file_cache_path]}/graphite-web-#{version}.tar.gz" do
+    source node['graphite']['web']['uri']
+    checksum node['graphite']['web']['checksum']
+  end
 
-execute "untar graphite-web" do
-  command "tar xzof graphite-web-#{version}.tar.gz"
-  creates "#{Chef::Config[:file_cache_path]}/graphite-web-#{version}"
-  cwd Chef::Config[:file_cache_path]
-end
+  execute "untar graphite-web" do
+    command "tar xzof graphite-web-#{version}.tar.gz"
+    creates "#{Chef::Config[:file_cache_path]}/graphite-web-#{version}"
+    cwd Chef::Config[:file_cache_path]
+  end
 
-execute "install graphite-web" do
-  command "python setup.py install --prefix=#{node['graphite']['base_dir']} --install-lib=#{node['graphite']['doc_root']}"
-  creates "#{node['graphite']['doc_root']}/graphite_web-#{version}-py#{pyver}.egg-info"
-  cwd "#{Chef::Config[:file_cache_path]}/graphite-web-#{version}"
+  execute "install graphite-web" do
+    command "python setup.py install --prefix=#{node['graphite']['base_dir']} --install-lib=#{node['graphite']['doc_root']}"
+    creates "#{node['graphite']['doc_root']}/graphite_web-#{version}-py#{pyver}.egg-info"
+    cwd "#{Chef::Config[:file_cache_path]}/graphite-web-#{version}"
+  end
 end
 
 directory "#{storagedir}/log/webapp" do
